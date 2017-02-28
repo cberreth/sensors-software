@@ -96,6 +96,20 @@ Beim Anschluss von Sensoren mit 5V bitte die Board-Version beachten. NodeMCU v3 
 * Pin 5 (5V)   -> VU
 * Pin 6 (1m)   -> unused
 
+### I2C-Module (BMP180/BME280, SSD1309)
+* Pin SCL -> Pin D4 / GPIO2
+* Pin DDA -> Pin D3 / GPIO0
+* VCC     -> Pin 3V3                                 *
+* GND     -> Pin GND
+
+### GPS, bevorzugt Neo-6M
+* Pin RX -> Pin D5 / GPIO14
+* Pin TX -> Pin D6 / GPIO12
+
+### MQ135
+* Pin AOUT -> Pin A0
+* Pin GND  -> GND
+* Pin VCC  -> VU (5V)
 
 Luftdaten.info API "Pins"
 Bei Aktivierung von mehreren Sensoren, z.B. "gleichzeitig" DHT22 und PPD42NS, benötigt die API zur Zuordnung der Sensorwerte die Angabe eines Pins, an dem der Sensor (virtuell) angeschlossen ist.
@@ -106,6 +120,7 @@ Diese Firmware definiert die Pins für die verschiedenenen Sensoren wie folgt:
 * BMP180 => Pin 3
 * BME280 => Pin 11
 * GPS(Neo-6M) => Pin 9
+* //MQ135 => Pin noch offen
 
 
 Verwendete Bibliotheken für Adafruit Feather M0 LoRa:
