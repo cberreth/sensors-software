@@ -57,8 +57,19 @@
 /*      SDA       ->     Pin D3 (GPIO0)                          *
 /*                                                               *
 /*****************************************************************/
+/* Analog Sensor via A0:         	                         *
+/* MQ135 
+/* https://www.olimex.com/Products/Components/Sensors/SNS-MQ135/resources/SNS-MQ135.pdf *
+/*                                                               *
+/* Wiring Instruction                                            *
+/* (see labels on display or sensor board)                       *
+/*      VCC       ->     Pin VU                                  *
+/*      GND       ->     Pin GND                                 *
+/*      AOUT       ->    Pin A0 (ADC0)                           *
+/*                                                               *
+/*****************************************************************/
 // increment on change
-#define SOFTWARE_VERSION "NRZ-2016-062"
+#define SOFTWARE_VERSION "NRZ-2017-063"
 
 /*****************************************************************
 /* Includes                                                      *
@@ -74,6 +85,7 @@
 #include <WiFiClientSecure.h>
 #include <SoftwareSerial.h>
 #include <SSD1306.h>
+#include <MQ135.h>
 #include <base64.h>
 #endif
 #if defined(ARDUINO_SAMD_ZERO)
@@ -110,6 +122,7 @@ bool sds_read = 1;
 bool bmp_read = 0;
 bool bme280_read = 0;
 bool gps_read = 0;
+bool mq135_read = 0;
 bool send2dusti = 1;
 bool send2madavi = 1;
 bool send2custom = 0;
@@ -191,6 +204,13 @@ Adafruit_BMP085 bmp;
 Adafruit_BME280 bme280;
 
 /*****************************************************************
+/* MQ135 declaration                                            *
+/*****************************************************************/
+#if defined(ESP8266)
+// TODO MQ135 mq135;
+#endif
+
+/*****************************************************************
 /* GPS declaration                                               *
 /*****************************************************************/
 #if defined(ARDUINO_SAMD_ZERO) || defined(ESP8266)
@@ -257,6 +277,7 @@ String last_result_SDS = "";
 String last_result_DHT = "";
 String last_result_BMP = "";
 String last_result_BME280 = "";
+String last_result_MQ135 = "";
 String last_result_GPS = "";
 String last_value_PPD_P1 = "";
 String last_value_PPD_P2 = "";
@@ -269,6 +290,7 @@ String last_value_BMP_P = "";
 String last_value_BME280_T = "";
 String last_value_BME280_H = ""; 
 String last_value_BME280_P = "";
+String last_value_MQ135 = "";
 String last_data_string = "";
 
 String last_gps_lat;
@@ -536,6 +558,7 @@ void copyExtDef() {
 	setDef(sds_read, SDS_READ);
 	setDef(bmp_read, BMP_READ);
 	setDef(bme280_read, BME280_READ);
+	setDef(mq135_read, MQ135_READ);
 	setDef(gps_read, GPS_READ);
 	setDef(send2dusti, SEND2DUSTI);
 	setDef(send2madavi, SEND2MADAVI);
@@ -608,6 +631,7 @@ void readConfig() {
 					setFromJSON(sds_read);
 					setFromJSON(bmp_read);
 					setFromJSON(bme280_read);
+					setFromJSON(mq135_read);
 					setFromJSON(gps_read);
 					setFromJSON(send2dusti);
 					setFromJSON(send2madavi);
@@ -665,6 +689,7 @@ void writeConfig() {
 	copyToJSON(sds_read);
 	copyToJSON(bmp_read);
 	copyToJSON(bme280_read);
+	copyToJSON(mq135_read);
 	copyToJSON(gps_read);
 	copyToJSON(send2dusti);
 	copyToJSON(send2madavi);
@@ -859,6 +884,7 @@ void webserver_config() {
 		page_content += form_checkbox(F("ppd_read"),F("PPD42NS"),ppd_read);
 		page_content += form_checkbox(F("bmp_read"),F("BMP180"),bmp_read);
 		page_content += form_checkbox(F("bme280_read"),F("BME280"),bme280_read);
+		page_content += form_checkbox(F("mq135_read"),F("MQ135"),mq135_read);
 		page_content += form_checkbox(F("gps_read"),F("GPS (NEO 6M)"),gps_read);
 		page_content += F("<br/><b>Weitere Einstellungen</b><br/>");
 		page_content += form_checkbox(F("auto_update"),F("Auto Update"),auto_update);
@@ -903,6 +929,7 @@ void webserver_config() {
 		readBoolParam(ppd_read);
 		readBoolParam(bmp_read);
 		readBoolParam(bme280_read);
+		readBoolParam(mq135_read);
 		readBoolParam(gps_read);
 		readBoolParam(auto_update);
 		readBoolParam(has_display);
@@ -935,6 +962,7 @@ void webserver_config() {
 		page_content += F("<br/>Lese PPD "); page_content += String(ppd_read);
 		page_content += F("<br/>Lese BMP180 "); page_content += String(bmp_read);
 		page_content += F("<br/>Lese BME280 "); page_content += String(bme280_read);
+		page_content += F("<br/>Lese MQ135 "); page_content += String(mq135_read);
 		page_content += F("<br/>Lese GPS "); page_content += String(gps_read);
 		page_content += F("<br/>Auto Update "); page_content += String(auto_update);
 		page_content += F("<br/>Display "); page_content += String(has_display);
@@ -998,6 +1026,10 @@ void webserver_values() {
 		page_content += table_row_from_value(F("BME280&nbsp;Temperatur:"),last_value_BME280_T+"&nbsp;°C");
 		page_content += table_row_from_value(F("BME280&nbsp;rel.&nbsp;Luftfeuchte:"),last_value_BME280_H+"&nbsp;%");
 		page_content += table_row_from_value(F("BME280&nbsp;Luftdruck:"),last_value_BME280_P+"&nbsp;Pascal");
+	}
+	if (mq135_read) {
+		page_content += table_row_from_value(F("MQ135&nbsp;Luftqualität:"),last_value_mq135+"&nbsp;ppm");
+		page_content += table_row_from_value(F("MQ135&nbsp;CO2 &Auml;quivalent"),last_value_mq135+"&nbsp;ppm");
 	}
 	page_content += table_row_from_value(" "," ");
 	page_content += table_row_from_value(F("WiFi&nbsp;Signal"),String(signal_strength)+"&nbsp;dBm");
@@ -1217,6 +1249,7 @@ void wifiConfig() {
 	debug_out(F("PPD_read: "),DEBUG_MIN_INFO,0);debug_out(String(ppd_read),DEBUG_MIN_INFO,1);
 	debug_out(F("SDS_read: "),DEBUG_MIN_INFO,0);debug_out(String(sds_read),DEBUG_MIN_INFO,1);
 	debug_out(F("BMP_read: "),DEBUG_MIN_INFO,0);debug_out(String(bmp_read),DEBUG_MIN_INFO,1);
+	debug_out(F("MQ135_read: "),DEBUG_MIN_INFO,0);debug_out(String(mq135_read),DEBUG_MIN_INFO,1);
 	debug_out(F("Dusti: "),DEBUG_MIN_INFO,0);debug_out(String(send2dusti),DEBUG_MIN_INFO,1);
 	debug_out(F("Madavi: "),DEBUG_MIN_INFO,0);debug_out(String(send2madavi),DEBUG_MIN_INFO,1);
 	debug_out(F("CSV: "),DEBUG_MIN_INFO,0);debug_out(String(send2csv),DEBUG_MIN_INFO,1);
@@ -1614,6 +1647,26 @@ String sensorBME280() {
 }
 
 /*****************************************************************
+/* read MQ1350 sensor values                                     *
+/*****************************************************************/
+String sensorMQ135() {
+	String s = "";
+	float aq;
+	
+	//TODO data acquisition
+	
+	debug_out(F("Start reading MQ135"),DEBUG_MED_INFO,1);
+	
+	debug_out(F("Air Quality : "),DEBUG_MIN_INFO,0);
+	last_value_MQ135 = Float2String(aq);
+	s += Value2Json(F("MQ135_AirQuality"),last_value_MQ135);
+	
+	debug_out(F("End reading MQ135"),DEBUG_MED_INFO,1);
+	
+	return s;
+}
+
+/*****************************************************************
 /* read SDS011 sensor values                                     *
 /*****************************************************************/
 String sensorSDS() {
@@ -1901,7 +1954,7 @@ void autoUpdate() {
 /*****************************************************************
 /* display values                                                *
 /*****************************************************************/
-void display_values(const String& value_DHT_T, const String& value_DHT_H, const String& value_BMP_T, const String& value_BMP_P, const String& value_PPD_P1, const String& value_PPD_P2, const String& value_SDS_P1, const String& value_SDS_P2) {
+void display_values(const String& value_DHT_T, const String& value_DHT_H, const String& value_BMP_T, const String& value_BMP_P, const String& value_PPD_P1, const String& value_PPD_P2, const String& value_SDS_P1, const String& value_SDS_P2, const String& value_MQ135) {
 #if defined(ESP8266)
 	int value_count = 0;
 	debug_out(F("output values to display..."),DEBUG_MIN_INFO,1);
@@ -1925,12 +1978,16 @@ void display_values(const String& value_DHT_T, const String& value_DHT_H, const 
 		display.drawString(0,10*(value_count++),"SDS P1: "+value_SDS_P1);
 		display.drawString(0,10*(value_count++),"SDS P2: "+value_SDS_P2);
 	}
+	if (mq135_read) {
+		display.drawString(0,10*(value_count++),"MQ AirQ: "+value_MQ135);
+		display.drawString(0,10*(value_count++),"MQ CO2: "+value_MQ135);
+	}
 	if (gps_read) {
 		if(gps.location.isValid()) {
 			display.drawString(0,10*(value_count++),"lat: "+String(gps.location.lat(),6));
 			display.drawString(0,10*(value_count++),"long: "+String(gps.location.lng(),6));
 		}
-		display.drawString(0,10*(value_count++),"satelites: "+String(gps.satellites.value()));
+		display.drawString(0,10*(value_count++),"satellites: "+String(gps.satellites.value()));
 	}
 	display.display();
 	yield();
@@ -2017,6 +2074,7 @@ void setup() {
 	if (dht_read) debug_out(F("Lese DHT..."),DEBUG_MIN_INFO,1);
 	if (bmp_read) debug_out(F("Lese BMP..."),DEBUG_MIN_INFO,1);
 	if (bme280_read) debug_out(F("Lese BME280..."),DEBUG_MIN_INFO,1);
+	if (mq135_read) debug_out(F("Lese MQ135..."),DEBUG_MIN_INFO,1);
 	if (gps_read) debug_out(F("Lese GPS..."),DEBUG_MIN_INFO,1);
 	if (send2dusti) debug_out(F("Sende an luftdaten.info..."),DEBUG_MIN_INFO,1);
 	if (send2madavi) debug_out(F("Sende an madavi.de..."),DEBUG_MIN_INFO,1);
@@ -2073,6 +2131,7 @@ void loop() {
 	String result_DHT = "";
 	String result_BMP = "";
 	String result_BME280 = "";
+	String result_MQ135 = "";
 	String result_GPS = "";
 	String signal_strength = "";
 	
@@ -2124,6 +2183,10 @@ void loop() {
 			debug_out(F("Call sensorBME280"),DEBUG_MAX_INFO,1);
 			result_BME280 = sensorBME280();			// getting temperature and humidity (optional)
 		}
+		if (mq135_read) {
+			debug_out(F("Call sensorMQ135"),DEBUG_MAX_INFO,1);
+			result_MQ135 = sensorMQ135();
+		}
 	}
 
 	if (gps_read && (((act_milli-starttime_GPS) > sampletime_GPS_ms) || ((act_milli-starttime) > sending_intervall_ms))) {
@@ -2138,7 +2201,7 @@ void loop() {
 				last_value_SDS_P1 = Float2String(float(sds_display_values_10[0]+sds_display_values_10[1]+sds_display_values_10[2]+sds_display_values_10[3]+sds_display_values_10[4])/50.0);
 				last_value_SDS_P2 = Float2String(float(sds_display_values_25[0]+sds_display_values_25[1]+sds_display_values_25[2]+sds_display_values_25[3]+sds_display_values_25[4])/50.0);
 			}
-			display_values(last_value_DHT_T,last_value_DHT_H,last_value_BMP_T,last_value_BMP_P,last_value_PPD_P1,last_value_PPD_P2,last_value_SDS_P1,last_value_SDS_P2);
+			display_values(last_value_DHT_T,last_value_DHT_H,last_value_BMP_T,last_value_BMP_P,last_value_PPD_P1,last_value_PPD_P2,last_value_SDS_P1,last_value_SDS_P2, last_value_MQ135);
 			display_last_update = act_milli;
 		}
 	}
@@ -2276,7 +2339,7 @@ void loop() {
 		}
 
 		if (has_display) {
-			display_values(last_value_DHT_T,last_value_DHT_H,last_value_BMP_T,last_value_BMP_P,last_value_PPD_P1,last_value_PPD_P2,last_value_SDS_P1,last_value_SDS_P2);
+			display_values(last_value_DHT_T,last_value_DHT_H,last_value_BMP_T,last_value_BMP_P,last_value_PPD_P1,last_value_PPD_P2,last_value_SDS_P1,last_value_SDS_P2, last_value_MQ135);
 		}
 
 		if (send2madavi) {
