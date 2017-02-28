@@ -1,0 +1,9 @@
+Sammlung Libs MQ135
+
+https://github.com/GeorgK/MQ135
+
+https://github.com/ckalpha/MQ135-Arduino-Sensor
+https://github.com/tribaltronik/devkitnodemcu
+https://github.com/jehy/arduino-esp8266-mq135
+https://github.com/empierre/arduino
+
