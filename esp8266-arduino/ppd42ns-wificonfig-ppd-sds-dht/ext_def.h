@@ -88,6 +88,13 @@
 #define GPS_PIN_TX D6
 #endif
 
+// MQ135, Luftqualität
+#define MQ_READ 0
+//#define MQ_API_PIN 14
+#if defined(ESP8266)
+#define MQ_PIN_AOUT A0
+#endif
+
 // Automatische Firmware-Updates über WLAN
 #define AUTO_UPDATE 1
 
